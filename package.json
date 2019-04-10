@@ -1,0 +1,14 @@
+{
+  "name": "ssb-server-plugin",
+  "version": "1.0.0",
+  "description": "ssb-server plugin template / boilerplate / starter",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "ssb-server": "^14.1.9"
+  }
+}

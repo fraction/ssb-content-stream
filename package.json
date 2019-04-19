@@ -1,7 +1,7 @@
 {
-  "name": "ssb-server-plugin",
+  "name": "ssb-create-content-stream",
   "version": "1.0.0",
-  "description": "ssb-server plugin template / boilerplate / starter",
+  "description": "stream method to get both blobs and content",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,6 +9,15 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "ssb-server": "^14.1.9"
+    "pull-stream": "^3.6.9",
+    "pull-tee": "^2.0.1",
+    "ssb-blobs": "^1.1.15",
+    "ssb-server": "^14.1.12"
+  },
+  "dependencies": {
+    "pull-cat": "^1.1.11",
+    "pull-catch": "^1.0.1",
+    "ssb-config": "^3.2.5",
+    "ssb-ref": "^2.13.9"
   }
 }

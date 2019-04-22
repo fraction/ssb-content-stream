@@ -12,7 +12,8 @@ const ssb = ssbServer(ssbConfig)
 
 const streamOpts = Object.assign(
   {},
-  ssb.whoami()
+  ssb.whoami(),
+  { limit: 10 }
 )
 
 const collect = (t) => pull.collect((err, msgs) => {
@@ -20,7 +21,7 @@ const collect = (t) => pull.collect((err, msgs) => {
   t.equal(Array.isArray(msgs), true, 'messages is an array')
 })
 
-test('basic', (t) => {
+test('createSource(opts) + createBlobHandler()', (t) => {
   t.plan(2)
 
   pull(
@@ -30,7 +31,7 @@ test('basic', (t) => {
   )
 })
 
-test('with blob callback', (t) => {
+test('createSource(opts) + createBlobHandler(cb)', (t) => {
   t.plan(4)
 
   pull(
@@ -43,4 +44,26 @@ test('with blob callback', (t) => {
   )
 })
 
+test('createBlobHandlerSource(opts, cb)', (t) => {
+  t.plan(2)
+
+  pull(
+    ssb.contentStream.createBlobHandlerSource(streamOpts),
+    collect(t)
+  )
+})
+
+test('createBlobHandlerSource(opts)', (t) => {
+  t.plan(4)
+
+  pull(
+    ssb.contentStream.createBlobHandlerSource(streamOpts, (err, blobNum) => {
+      t.error(err, 'successful blob handler')
+      t.equal(typeof blobNum, 'number')
+    }),
+    collect(t)
+  )
+})
+
 test.onFinish(ssb.close)
+

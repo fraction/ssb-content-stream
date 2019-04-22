@@ -53,19 +53,24 @@ pull(
 ## API
 
 
-### `contentStream.createSource(opts?)`
+### `createSource(opts)`
 
 Wrapper for [`createHistoryStream`][0] that prepends all referenced blobs to the
 stream. Since `createHistoryStream` only returns public and unencrypted messages
 this function will only return public and unencrypted blobs.
 
-### `contentStream.createBlobHandler(cb?)`
+### `createBlobHandler(cb)`
 
 Creates a through-stream that filters blobs out of the stream, adds them to the
 blob store with `ssb.blobs.add`, and only passes messages through the stream.
 
 An optional callback provides `(err, blobNum)` which returns the number of blobs
 that were added by the handler.
+
+### `createBlobHandlerSource(opts, cb)`
+
+A combination of `createSource()` and `createBlobHandler()` in the same method
+so that you don't have to add more code to your pull-stream pipeline.
 
 ## Maintainers
 

@@ -80,8 +80,14 @@ exports.init = (ssb) => {
         ),
         pull.filterNot(Buffer.isBuffer)
       )
-    }
+    },
+    createBlobHandlerSource: (opts, cb) =>
+      pull(
+        contentStream.createSource(opts),
+        contentStream.createBlobHandler(cb)
+      )
   }
+
   return contentStream
 }
 

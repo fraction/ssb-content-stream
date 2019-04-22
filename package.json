@@ -1,10 +1,10 @@
 {
-  "name": "ssb-create-content-stream",
+  "name": "ssb-content-stream",
   "version": "1.0.0",
   "description": "stream method to get both blobs and content",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "author": "",
   "license": "ISC",

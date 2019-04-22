@@ -84,6 +84,11 @@ exports.init = (ssb) => {
   return contentStream
 }
 
-exports.manifest = {}
+exports.manifest = {
+  createSource: 'source',
+  createBlobHandler: 'source'
+}
+
+exports.permissions = [ 'createSource' ]
 exports.name = pkg.name.replace('ssb-', '')
 exports.version = pkg.version

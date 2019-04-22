@@ -10,7 +10,8 @@
   "license": "ISC",
   "devDependencies": {
     "ssb-blobs": "^1.1.15",
-    "ssb-server": "^14.1.12"
+    "ssb-server": "^14.1.12",
+    "tape": "^4.10.1"
   },
   "dependencies": {
     "pull-cat": "^1.1.11",

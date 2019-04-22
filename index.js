@@ -5,8 +5,9 @@ const ssbRef = require('ssb-ref')
 const pullCatch = require('pull-catch')
 const pullTee = require('pull-tee')
 
-var MB = 1024 * 1024
-var MAX_SIZE = 5 * MB
+const MB = 1024 * 1024
+const MAX_SIZE = 5 * MB
+const noop = () => {}
 
 // https://github.com/ssbc/ssb-backlinks/blob/master/emit-links.js#L47-L55
 function walk (obj, fn) {
@@ -51,7 +52,7 @@ exports.init = (ssb) => {
       ),
       ssb.createHistoryStream(opts)
     ]),
-    createBlobHandler: (cb) => {
+    createBlobHandler: (cb = noop) => {
       let count = 0
       const errors = []
 

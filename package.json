@@ -6,17 +6,17 @@
   "scripts": {
     "test": "node test.js"
   },
-  "author": "",
+  "author": "Fraction",
   "license": "ISC",
   "devDependencies": {
-    "pull-stream": "^3.6.9",
-    "pull-tee": "^2.0.1",
     "ssb-blobs": "^1.1.15",
     "ssb-server": "^14.1.12"
   },
   "dependencies": {
     "pull-cat": "^1.1.11",
     "pull-catch": "^1.0.1",
+    "pull-stream": "^3.6.9",
+    "pull-tee": "^2.0.1",
     "ssb-config": "^3.2.5",
     "ssb-ref": "^2.13.9"
   }

@@ -1,7 +1,7 @@
 {
   "name": "ssb-content-stream",
   "version": "1.0.0",
-  "description": "stream method to get both blobs and content",
+  "description": "Scuttlebutt stream of both messages and blobs",
   "main": "index.js",
   "scripts": {
     "test": "node test.js"

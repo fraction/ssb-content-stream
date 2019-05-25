@@ -22,10 +22,36 @@ const streamOpts = Object.assign(
 const collect = (t) => pull.collect((err, msgs) => {
   t.error(err, 'collect messages without error')
   t.equal(Array.isArray(msgs), true, 'messages is an array')
+  t.equal(msgs.length,1, 'number of messages')
+  t.equal(msgs[0].value.author, newK.id, 'number of messages')
+})
+
+test.onFinish(ssb.close)
+
+test('publish', (t) => {
+  t.plan(3)
+
+  pull(
+    pull.values([Buffer.from("hello world")]),
+    ssb.blobs.add((err, hash) => {
+      t.error(err)
+      let msg = {
+        "type": "blob-msg",
+        "blob": hash,
+      }
+      t.comment('added')
+      ssb.publish(msg, (err, msg) => {
+        t.error(err)
+        t.ok(msg)
+        console.log(msg)
+        t.end()
+      })
+    })
+  )
 })
 
 test('createSource(opts) + createBlobHandler()', (t) => {
-  t.plan(2)
+  t.plan(4)
 
   pull(
     ssb.contentStream.createSource(streamOpts),
@@ -35,7 +61,7 @@ test('createSource(opts) + createBlobHandler()', (t) => {
 })
 
 test('createSource(opts) + createBlobHandler(cb)', (t) => {
-  t.plan(4)
+  t.plan(6)
 
   pull(
     ssb.contentStream.createSource(streamOpts),
@@ -48,7 +74,7 @@ test('createSource(opts) + createBlobHandler(cb)', (t) => {
 })
 
 test('createBlobHandlerSource(opts, cb)', (t) => {
-  t.plan(2)
+  t.plan(4)
 
   pull(
     ssb.contentStream.createBlobHandlerSource(streamOpts),
@@ -57,7 +83,7 @@ test('createBlobHandlerSource(opts, cb)', (t) => {
 })
 
 test('createBlobHandlerSource(opts)', (t) => {
-  t.plan(4)
+  t.plan(6)
 
   pull(
     ssb.contentStream.createBlobHandlerSource(streamOpts, (err, blobNum) => {
@@ -67,6 +93,3 @@ test('createBlobHandlerSource(opts)', (t) => {
     collect(t)
   )
 })
-
-test.onFinish(ssb.close)
-

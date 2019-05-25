@@ -1,18 +1,21 @@
 const ssbServer = require('ssb-server')
-const ssbConfig = require('ssb-config')
+const {generate} = require('ssb-keys')
 const pull = require('pull-stream')
 const test = require('tape')
 
 ssbServer
-  .use(require('ssb-server/plugins/master'))
   .use(require('ssb-blobs'))
   .use(require('./'))
 
-const ssb = ssbServer(ssbConfig)
+let newK = generate()
+const ssb = ssbServer( {
+  temp: "content-stream-tests",
+  keys: newK
+})
 
 const streamOpts = Object.assign(
   {},
-  ssb.whoami(),
+  { id: newK.id },
   { limit: 10 }
 )
 

@@ -1,6 +1,6 @@
 {
   "name": "ssb-content-stream",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Scuttlebutt stream of messages and off-chain content.",
   "main": "index.js",
   "scripts": {

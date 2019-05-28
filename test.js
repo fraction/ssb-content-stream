@@ -1,95 +1,81 @@
 const ssbServer = require('ssb-server')
-const {generate} = require('ssb-keys')
+const { generate } = require('ssb-keys')
 const pull = require('pull-stream')
 const test = require('tape')
+const lodash = require('lodash')
 
-ssbServer
-  .use(require('ssb-blobs'))
-  .use(require('./'))
+ssbServer.use(require('./'))
 
 let newK = generate()
-const ssb = ssbServer( {
-  temp: "content-stream-tests",
+const ssb = ssbServer({
+  temp: 'content-stream-tests',
   keys: newK
 })
+
+const count = 12
+const limit = 10
 
 const streamOpts = Object.assign(
   {},
   { id: newK.id },
-  { limit: 10 }
+  { limit }
 )
 
 const collect = (t) => pull.collect((err, msgs) => {
   t.error(err, 'collect messages without error')
   t.equal(Array.isArray(msgs), true, 'messages is an array')
-  t.equal(msgs.length,1, 'number of messages')
-  t.equal(msgs[0].value.author, newK.id, 'number of messages')
+  t.equal(msgs.length, limit, 'number of messages')
+  t.equal(msgs[0].value.author, newK.id, 'author')
 })
 
 test.onFinish(ssb.close)
 
 test('publish', (t) => {
-  t.plan(3)
+  t.plan(3 * count)
 
-  pull(
-    pull.values([Buffer.from("hello world")]),
-    ssb.blobs.add((err, hash) => {
-      t.error(err)
-      let msg = {
-        "type": "blob-msg",
-        "blob": hash,
-      }
-      t.comment('added')
-      ssb.publish(msg, (err, msg) => {
-        t.error(err)
-        t.ok(msg)
-        console.log(msg)
-        t.end()
+  lodash.times(count, () => {
+    let sent = {
+      type: 'test',
+      randomNumber: Math.random()
+    }
+
+    // Publish it as off-chain content!
+    ssb.publish(sent, (err, received) => {
+      t.error(err, 'publish() success')
+
+      // Make sure we retain the original content with `{ private: true }`
+      ssb.get({ id: received.key, private: true }, (err, mapped) => {
+        t.error(err, 'get() success')
+        t.deepEqual(mapped.content, sent, 'content same as original')
       })
     })
-  )
+  })
 })
 
-test('createSource(opts) + createBlobHandler()', (t) => {
+test('createSource(opts) + createHandler()', (t) => {
   t.plan(4)
 
   pull(
     ssb.contentStream.createSource(streamOpts),
-    ssb.contentStream.createBlobHandler(),
+    ssb.contentStream.createHandler(),
     collect(t)
   )
 })
 
-test('createSource(opts) + createBlobHandler(cb)', (t) => {
-  t.plan(6)
-
-  pull(
-    ssb.contentStream.createSource(streamOpts),
-    ssb.contentStream.createBlobHandler((err, blobNum) => {
-      t.error(err, 'successful blob handler')
-      t.equal(typeof blobNum, 'number')
-    }),
-    collect(t)
-  )
-})
-
-test('createBlobHandlerSource(opts, cb)', (t) => {
+test('getContentStream(opts, cb)', (t) => {
   t.plan(4)
 
   pull(
-    ssb.contentStream.createBlobHandlerSource(streamOpts),
+    ssb.contentStream.getContentStream(streamOpts),
     collect(t)
   )
 })
 
-test('createBlobHandlerSource(opts)', (t) => {
-  t.plan(6)
+test('getContentStream(opts)', (t) => {
+  t.plan(4)
 
   pull(
-    ssb.contentStream.createBlobHandlerSource(streamOpts, (err, blobNum) => {
-      t.error(err, 'successful blob handler')
-      t.equal(typeof blobNum, 'number')
-    }),
+    ssb.contentStream.getContentStream(streamOpts),
     collect(t)
   )
 })

@@ -1,92 +1,145 @@
 const pkg = require('./package.json')
 const pull = require('pull-stream')
 const pullCat = require('pull-cat')
-const ssbRef = require('ssb-ref')
-const pullCatch = require('pull-catch')
-const pullTee = require('pull-tee')
+const crypto = require('crypto')
+const level = require('level')
+const path = require('path')
+const lodash = require('lodash')
 
-const MB = 1024 * 1024
-const MAX_SIZE = 5 * MB
-const noop = () => {}
+const safe64 = (s) => {
+  return s.replace('+', '-').replace('/', '_')
+}
 
-// https://github.com/ssbc/ssb-backlinks/blob/master/emit-links.js#L47-L55
-function walk (obj, fn) {
-  if (obj && typeof obj === 'object') {
-    for (var k in obj) {
-      walk(obj[k], fn)
-    }
-  } else {
-    fn(obj)
+const isContentMessage = (msg) => {
+  // Make sure `content` is an object.
+  if (typeof msg.value.content !== 'object') {
+    return false
+  }
+
+  // Make sure this is a content message.
+  if (msg.value.content.type !== 'content') {
+    return false
+  }
+
+  if (msg.value.content.href.startsWith('ssb:content:sha256') === false) {
+    return false
   }
 }
 
-exports.init = (ssb) => {
+const getContentHref = (msg) =>
+  isContentMessage(msg) ? msg.value.content.href : null
+
+const createHref = (str) => {
+  const hash = crypto.createHash('sha256').update(str)
+  const digest = safe64(hash.digest('base64'))
+  return `ssb:content:sha256:${digest}`
+}
+
+exports.init = (ssb, config) => {
+  var db = level(path.join(config.path, 'content'))
+
+  // XXX: is this a bad idea? we want to keep clients from publishing inline content
+  const originalPublish = ssb.publish
+
   const contentStream = {
+    // Returns `createHistoryStream()` with off-chain content added inline.
+    //
+    // Each message is searched for the follwing pattern:
+    //
+    // ```javascript
+    // {
+    //   type: 'content',
+    //   href: `ssb:content:sha256:${hash}`
+    // }
+    // ```
+    //
+    // Items that pass the pattern are pulled from the database and prepended
+    // to the stream so that they don't bottleneck the indexing process.
     createSource: (opts) => pullCat([
       pull(
         ssb.createHistoryStream(opts),
-        pull.map(msg => {
-          // get blobs referenced by message
-          // TODO: use ssb-backlinks or something to cache
-          const blobs = []
-          walk(msg, (val) => {
-            if (ssbRef.isBlob(val)) {
-              blobs.push(val)
-            }
-          })
-
-          return blobs
-        }),
-        pull.flatten(), // items of arrays of strings => items of strings
-        pull.unique(), // don't get the same blob twice
-        pull.map((hash) =>
-          pull(
-            ssb.blobs.get({
-              hash,
-              max: opts.max || MAX_SIZE
-            }),
-            pullCatch() // disregard blobs that don't exist or are too big
-          )
-        ),
-        pull.flatten() // convert from pull-stream source to items
+        pull.map(getContentHref),
+        pull.filter(),
+        pull.unique(),
+        pull.asyncMap(db.get)
       ),
       ssb.createHistoryStream(opts)
     ]),
-    createBlobHandler: (cb = noop) => {
-      let count = 0
-      const errors = []
+
+    // Consumes the output of `createSource()` by receiving messages + content
+    // and adding them to the database for indexing. This method can tell the
+    // difference between messages and content because messages are objects
+    // and content is a JSON string.
+    //
+    // This is a slightly funky implementation because any part of the process
+    // could throw an error, so we keep an `errors` array that helps us keep
+    // track of all of the moving parts that could crash and burn.
+    createHandler: () => {
+      const contentMap = {}
 
       return pull(
-        pullTee(
-          pull(
-            pull.filter(Buffer.isBuffer),
-            pull.drain((blob) => {
-              pull(
-                pull.values([blob]),
-                ssb.blobs.add((err) => {
-                  if (err) errors.push(err)
-                  count += 1
-                })
-              )
-            }, (err) => {
-              if (err || errors.length) {
-                const errConcat = [err, errors]
-                return cb(errConcat, count)
-              } else {
-                cb(null, count)
-              }
-            })
-          )
-        ),
-        pull.filterNot(Buffer.isBuffer)
+        pull.map(val => {
+          // If the item is a content string we add it to the `contentMap`
+          // object for processing later.
+          if (typeof val === 'string') {
+            const href = createHref(val)
+            contentMap[href] = val
+            return null
+          }
+
+          return val
+        }),
+        pull.filter(),
+        pull.through((msg) => {
+          // Now we take each message and check whether it's in `contentMap`.
+          const href = getContentHref(msg)
+          if (href == null || contentMap[href] == null) {
+            return
+          }
+
+          db.put(href, contentMap[href], (err) => {
+            if (err) throw err
+          })
+        })
       )
     },
-    createBlobHandlerSource: (opts, cb) =>
-      pull(
-        contentStream.createSource(opts),
-        contentStream.createBlobHandler(cb)
-      )
+    getContent: (msg, cb) => {
+      if (isContentMessage(msg) === false) {
+        cb(null, msg)
+      }
+
+      db.get(msg.value.content.href, (err, val) => {
+        if (err) return cb(err, msg)
+
+        lodash.set(msg, 'value.meta.original.content', msg.value.content)
+        msg.value.content = JSON.parse(val)
+        cb(null, msg)
+      })
+    },
+    getContentStream: (opts) => pull(
+      contentStream.createSource(opts),
+      contentStream.createHandler(),
+      pull.asyncMap(contentStream.getContent)
+    ),
+    publish: (content, cb) => {
+      const str = JSON.stringify(content)
+      const href = createHref(str)
+      const msg = {
+        type: 'content',
+        href,
+        mediaType: 'text/json'
+      }
+      db.put(href, str, (err) => {
+        if (err) return cb(err)
+        originalPublish(msg, cb)
+      })
+    }
   }
+
+  ssb.publish = contentStream.publish
+
+  // This only works when queries are started when `{ private: true }`
+  ssb.addMap(contentStream.getContent)
 
   return contentStream
 }

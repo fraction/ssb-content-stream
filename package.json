@@ -9,16 +9,15 @@
   "author": "Fraction",
   "license": "ISC",
   "devDependencies": {
-    "ssb-blobs": "1.1.14",
     "ssb-keys": "^7.1.6",
     "ssb-server": "^15.0.1",
     "tape": "^4.10.1"
   },
   "dependencies": {
+    "level": "^5.0.1",
+    "lodash": "^4.17.11",
     "pull-cat": "^1.1.11",
-    "pull-catch": "^1.0.1",
     "pull-stream": "^3.6.9",
-    "pull-tee": "^2.0.1",
-    "ssb-ref": "^2.13.9"
+    "pull-tee": "^2.0.1"
   }
 }

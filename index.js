@@ -38,9 +38,6 @@ const createHref = (str) => {
 exports.init = (ssb, config) => {
   var db = level(path.join(config.path, 'content'))
 
-  // XXX: is this a bad idea? we want to keep clients from publishing inline content
-  const originalPublish = ssb.publish
-
   const contentStream = {
     // Returns `createHistoryStream()` with off-chain content added inline.
     //
@@ -93,8 +90,13 @@ exports.init = (ssb, config) => {
         pull.through((msg) => {
           // Now we take each message and check whether it's in `contentMap`.
           const href = getContentHref(msg)
-          if (href == null || contentMap[href] == null) {
+
+          if (href == null) {
             return
+          }
+
+          if (contentMap[href] == null) {
+            throw new Error('messages from content stream must contain content')
           }
 
           db.put(href, contentMap[href], (err) => {
@@ -103,6 +105,10 @@ exports.init = (ssb, config) => {
         })
       )
     },
+    // Convenience function for taking a Scuttlebutt message and squeezing out
+    // the off-chain content for consumption by applications. This is used
+    // with `ssb.addMap()` so that views see content by default, but it may
+    // become useful in other contexts.
     getContent: (msg, cb) => {
       if (isContentMessage(msg) === false) {
         cb(null, msg)
@@ -116,11 +122,14 @@ exports.init = (ssb, config) => {
         cb(null, msg)
       })
     },
+    // Same API as calling `createHistoryStream()` except that it returns the
+    // off-chain content instead of just the metadata.
     getContentStream: (opts) => pull(
       contentStream.createSource(opts),
       contentStream.createHandler(),
       pull.asyncMap(contentStream.getContent)
     ),
+    // Takes message value and posts it to your feed as off-chain content.
     publish: (content, cb) => {
       const str = JSON.stringify(content)
       const href = createHref(str)
@@ -136,6 +145,8 @@ exports.init = (ssb, config) => {
     }
   }
 
+  // XXX: is this a bad idea? we want to keep clients from publishing inline content
+  const originalPublish = ssb.publish
   ssb.publish = contentStream.publish
 
   // This only works when queries are started when `{ private: true }`

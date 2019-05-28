@@ -40,7 +40,7 @@ test('publish', (t) => {
     }
 
     // Publish it as off-chain content!
-    ssb.publish(sent, (err, received) => {
+    ssb.contentStream.publish(sent, (err, received) => {
       t.error(err, 'publish() success')
 
       // Make sure we retain the original content with `{ private: true }`

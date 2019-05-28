@@ -1,7 +1,7 @@
 {
   "name": "ssb-content-stream",
   "version": "2.1.0",
-  "description": "Scuttlebutt stream of both messages and blobs",
+  "description": "Scuttlebutt stream of messages and off-chain content.",
   "main": "index.js",
   "scripts": {
     "test": "node test.js"
@@ -11,13 +11,12 @@
   "devDependencies": {
     "ssb-keys": "^7.1.6",
     "ssb-server": "^15.0.1",
-    "tape": "^4.10.1"
+    "tape": "^4.10.2"
   },
   "dependencies": {
     "level": "^5.0.1",
     "lodash": "^4.17.11",
     "pull-cat": "^1.1.11",
-    "pull-stream": "^3.6.9",
-    "pull-tee": "^2.0.1"
+    "pull-stream": "^3.6.9"
   }
 }

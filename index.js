@@ -111,7 +111,7 @@ exports.init = (ssb, config) => {
     // become useful in other contexts.
     getContent: (msg, cb) => {
       if (isContentMessage(msg) === false) {
-        cb(null, msg)
+        return cb(null, msg)
       }
 
       db.get(msg.value.content.href, (err, val) => {
@@ -134,9 +134,9 @@ exports.init = (ssb, config) => {
       const str = JSON.stringify(content)
       const href = createHref(str)
       const msg = {
-        type: 'content',
         href,
-        mediaType: 'text/json'
+        mediaType: 'text/json',
+        type: 'content'
       }
       db.put(href, str, (err) => {
         if (err) return cb(err)

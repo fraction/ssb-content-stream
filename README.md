@@ -1,10 +1,10 @@
 # ssb-content-stream
 
-> Scuttlebutt stream of both messages and blobs
+> Scuttlebutt stream of both messages and off-chain content.
 
 This plugin exposes a method that wraps `createHistoryStream` and returns all
-blobs that are mentioned by the messages. This is meant to reduce the number
-of ad-hoc blob requests and round trips necessary to sync messages and blobs.
+off-chain content referenced by those messages. This gives us the ability to
+do deletion and feed replication without using the blob system.
 
 ## Table of Contents
 
@@ -23,54 +23,76 @@ npm install ssb-content-stream
 
 ## Usage
 
-```js
-const ssbServer = require('ssb-server')
-const ssbConfig = require('ssb-config')
-const pull = require('pull-stream')
+```javascript
+const server = require('ssb-server')
+  .use(require('ssb-master'))
+  .use(require('./'))
 
-ssbServer
-  .use(require('ssb-server/plugins/master'))
-  .use(require('ssb-blobs'))
-  .use(require('ssb-content-stream'))
+const config = Object.assign({}, require('ssb-config'), {
+  keys: require('ssb-keys').generate() // Random key for testing!
+})
 
-const ssb = ssbServer(ssbConfig)
+const ssb = server(config)
 
-pull(
-  ssb.contentStream.createSource(ssb.whoami()),
-  ssb.contentStream.createBlobHandler((err, blobNum) => {
-    if (err) throw err
-    console.log(`Blobs: ${blobNum}`)
-  }),
-  pull.collect((err, msgs) => {
-    if (err) throw err
-    console.log(`Messages: ${msgs.length}`)
-
-    ssb.close()
-  })
-)
+ssb.contentStream.publish({ type: 'test', randomNumber: 42 }, (err, msg) => {
+  if (err) throw err
+  console.log(msg)
+})
 ```
 
+```javascript
+{ key: '%hK2+Ed0KJlJ5kR4IbvEs3GZywPJ3GWyyWjsCgsuhtO8=.sha256',
+  value:
+   { previous: null,
+     sequence: 1,
+     author: '@MJ+WR+PF/6QPnzN2ef2XyhRNSBIWsx0T45ZAffEcEPk=.ed25519',
+     timestamp: 1559086953009,
+     hash: 'sha256',
+     content:
+      { type: 'content',
+        href:
+         'ssb:content:sha256:rWqRaMb0dfFmss2xan936taWQFfJ_1GGOeckZrFUit8=',
+        mediaType: 'text/json' },
+     signature:
+      'lcCJSMl1cDHr85m8u0WjhZl/DjOENOCzTsH58Jqo2RpQ0AKoGlQVoEC+nwRIStvfz58tbvCIt+ilEOyYxb2rAg==.sig.ed25519' },
+  timestamp: 1559086953010 }
+```
 ## API
 
 
 ### `createSource(opts)`
 
-Wrapper for [`createHistoryStream`][0] that prepends all referenced blobs to the
+Wrapper for [`createHistoryStream`][0] that prepends all off-chain content to the
 stream. Since `createHistoryStream` only returns public and unencrypted messages
-this function will only return public and unencrypted blobs.
+this function will only return public messages and its content.
 
-### `createBlobHandler(cb)`
+### `createHandler(cb)`
 
-Creates a through-stream that filters blobs out of the stream, adds them to the
-blob store with `ssb.blobs.add`, and only passes messages through the stream.
+Creates a through-stream that filters content out of the stream, adds them to the
+content store, and only passes the original metadata message through the stream.
 
-An optional callback provides `(err, blobNum)` which returns the number of blobs
-that were added by the handler.
+### `getContent(msg, cb)`
 
-### `createBlobHandlerSource(opts, cb)`
+Takes a full message (`{ key, value: { previous, sequence, ... } }`) and 
+returns the extracted content from that message in `msg.value.content` as if
+it wasn't a message with off-chain content.
 
-A combination of `createSource()` and `createBlobHandler()` in the same method
-so that you don't have to add more code to your pull-stream pipeline.
+### `getContent(opts)`
+
+Passes `createSource()` through `createHandler()` and `getContent()`.
+
+### `publish(content, cb)`
+
+Wraps `ssb.publish` to publish off-chain messages that can be accessed with
+content streams. Message schema is:
+
+```json
+{
+  "href": "ssb:content:sha256:rWqRaMb0dfFmss2xan936taWQFfJ_1GGOeckZrFUit8=",
+  "mediaType": "text/json",
+  "type": "content"
+}
+```
 
 ## Maintainers
 

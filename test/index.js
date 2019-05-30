@@ -4,7 +4,7 @@ const pull = require('pull-stream')
 const test = require('tape')
 const lodash = require('lodash')
 
-ssbServer.use(require('./'))
+ssbServer.use(require('../lib'))
 
 let newK = generate()
 const ssb = ssbServer({

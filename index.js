@@ -147,7 +147,7 @@ exports.init = (ssb, config) => {
 
   // XXX: is this a bad idea? we want to keep clients from publishing inline content
   const originalPublish = ssb.publish
-  ssb.publish = contentStream.publish
+  // ssb.publish = contentStream.publish
 
   // This only works when queries are started when `{ private: true }`
   ssb.addMap(contentStream.getContent)

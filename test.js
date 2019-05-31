@@ -5,6 +5,9 @@ const test = require('tape')
 const lodash = require('lodash')
 
 ssbServer.use(require('./'))
+.use(require('ssb-replicate'))  
+.use(require('ssb-friends'))
+.use(require('ssb-names'))
 
 let newK = generate()
 const ssb = ssbServer({
@@ -79,3 +82,50 @@ test('getContentStream(opts)', (t) => {
     collect(t)
   )
 })
+
+// shows that over-writing publish isn't that simple
+test('dont break ssb-friends', (t) => {
+  let bob = generate()
+
+  let followmsg = {
+    type: 'contact',
+    contact: bob.id,
+    folowing: true
+  }
+
+  // chaning to ssb.publish makes this pass
+  ssb.contentStream.publish(followmsg, (err, msg) => {
+    t.error(err, 'publish() success')
+    t.comment('published:' + JSON.stringify(msg))
+
+    // somehow friends doesn't use private:true for indexing?!
+    // i'd guess our added "unbox" map is just acting up?
+    // since i'm sure private blocks are a feature now?!
+    ssb.friends.get({src: ssb.id, dest: bob.id}, function(err, val) {
+      t.error(err, 'friends.get of new contact')
+      t.equals(val[ssb.id], null, 'is following')
+      t.end()
+    })
+  })
+})
+
+test('dont break ssb-names', (t) => {
+  let bob =generate()
+
+  let sent = {
+    type: 'about',
+    about: bob.id,
+    name: "fellow"
+  }
+  ssb.contentStream.publish(sent, (err, msg) => {
+    t.error(err, 'publish() success')
+    t.comment('published:' + JSON.stringify(msg))
+
+    ssb.names.getSignifier(bob.id, function(err, val) {
+      t.error(err, 'names.getSignifier')
+      t.equals(val, 'fellow', 'got name')
+      t.end()
+    })
+  })
+})
+
